@@ -27,6 +27,7 @@ fn read_memory(memory: &[usize]) -> Vec<Instruction> {
     let mut ops = vec![];
     loop {
         if index >= memory.len() {
+            //return Err(IntCodeError::MemReadOutOfBounds { index });
             break;
         }
         let code = memory[index];
@@ -66,34 +67,38 @@ fn run_program(instructions: Vec<Instruction>, symbols: &mut Vec<usize>) -> Resu
     for int in instructions {
         match int {
             Instruction::Add(params) => {
-                symbols
-                    .get(params.result)
-                    .ok_or(0)
-                    .context(MemReadOutOfBounds {
-                        index: params.result,
-                    })? = symbols
-                    .get(params.lhs)
-                    .ok_or(0)
-                    .context(MemReadOutOfBounds { index: params.lhs })?
-                    + symbols
-                        .get(params.rhs)
-                        .ok_or(0)
-                        .context(MemReadOutOfBounds { index: params.rhs })?;
+                match symbols.len() {
+                    x if params.result >= x => {
+                        return Err(IntCodeError::MemReadOutOfBounds {
+                            index: params.result,
+                        });
+                    }
+                    x if params.lhs >= x => {
+                        return Err(IntCodeError::MemReadOutOfBounds { index: params.lhs });
+                    }
+                    x if params.rhs >= x => {
+                        return Err(IntCodeError::MemReadOutOfBounds { index: params.rhs });
+                    }
+                    _ => {}
+                }
+                symbols[params.result] = symbols[params.lhs] + symbols[params.rhs];
             }
             Instruction::Mult(params) => {
-                symbols
-                    .get(params.result)
-                    .ok_or(0)
-                    .context(MemReadOutOfBounds {
-                        index: params.result,
-                    })? = symbols
-                    .get(params.lhs)
-                    .ok_or(0)
-                    .context(MemReadOutOfBounds { index: params.lhs })?
-                    * symbols
-                        .get(params.rhs)
-                        .ok_or(0)
-                        .context(MemReadOutOfBounds { index: params.rhs })?;
+                match symbols.len() {
+                    x if params.result >= x => {
+                        return Err(IntCodeError::MemReadOutOfBounds {
+                            index: params.result,
+                        });
+                    }
+                    x if params.lhs >= x => {
+                        return Err(IntCodeError::MemReadOutOfBounds { index: params.lhs });
+                    }
+                    x if params.rhs >= x => {
+                        return Err(IntCodeError::MemReadOutOfBounds { index: params.rhs });
+                    }
+                    _ => {}
+                }
+                symbols[params.result] = symbols[params.lhs] * symbols[params.rhs];
             }
             Instruction::Halt => break,
         }
@@ -117,7 +122,10 @@ fn main() -> io::Result<()> {
             memory[1] = x;
             memory[2] = y;
             let instructions = read_memory(&memory);
-            run_program(instructions, &mut memory);
+            match run_program(instructions, &mut memory) {
+                Ok(_) => {}
+                Err(_) => continue, // skip programs that error out
+            }
             match memory[0] {
                 19690720 => {
                     println!("Answer: {}", 100 * x + y);
